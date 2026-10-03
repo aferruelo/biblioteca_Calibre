@@ -1,6 +1,6 @@
-const SHELL='cv-shell-v2', RT='cv-runtime-v2';
+const SHELL='cv-shell-v3', RT='cv-runtime-v3';
 const ASSETS=['./','./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
-const EXTERNAL=['cdnjs.cloudflare.com','fonts.googleapis.com','fonts.gstatic.com'];
+const EXTERNAL=['cdnjs.cloudflare.com','cdn.jsdelivr.net','fonts.googleapis.com','fonts.gstatic.com'];
 
 self.addEventListener('install',e=>{
   e.waitUntil(caches.open(SHELL).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting()));
