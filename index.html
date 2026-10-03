@@ -619,8 +619,11 @@ function openDetail(b,note){
   const rows=b.formats.map((f,i)=>{
     const d=isDl(b,f.fmt),lock=offlineMode&&!d?'disabled':'';
     const label=f.fmt==='EPUB'?'Leer EPUB':f.fmt==='PDF'?'Abrir PDF':`Descargar ${f.fmt}`;
-    return `<div class="frow"><button class="btn small" data-f="${i}" ${lock}>${label}</button><button class="btn ghost small" data-off="${i}" ${lock}>${d?'✓ Quitar descarga':'Guardar sin conexión'}</button></div>`;
+    const dlBtn=(f.fmt==='EPUB'||f.fmt==='PDF')?`<button class="btn ghost small" data-dl="${i}" ${lock}>Descargar</button>`:'';
+    const shBtn=CAN_SHARE?`<button class="btn ghost small" data-sh="${i}" ${lock}>Compartir</button>`:'';
+    return `<div class="frow"><button class="btn small" data-f="${i}" ${lock}>${label}</button>${dlBtn}${shBtn}<button class="btn ghost small" data-off="${i}" ${lock}>${d?'✓ Quitar descarga':'Guardar sin conexión'}</button></div>`;
   }).join('');
+  const tip=CAN_SHARE&&b.formats.some(f=>f.fmt==='EPUB')?'<p class="facts">Para el Kindle: pulsa «Compartir», elige Gmail y escribe tu dirección @kindle.com.</p>':'';
   $('#detailBody').innerHTML=`<div class="detail">
     <div class="cover" id="dCover">${coverHtml(b)}</div>
     <div>
@@ -631,6 +634,7 @@ function openDetail(b,note){
       <div class="tags">${b.tags.map((t,i)=>`<button class="chip" data-tag="${i}">${esc(t)}</button>`).join('')}</div>
       <div class="desc">${esc(htmlToText(b.comments))}</div>
       ${rows}
+      ${tip}
       <p class="facts" id="dMsg">${esc(note||'')}</p>
     </div></div>`;
   const dlg=$('#detail');
@@ -643,6 +647,8 @@ function openDetail(b,note){
     x.disabled=true;
     isDl(b,f.fmt)?removeOffline(b,f):saveOffline(b,f);
   });
+  dlg.querySelectorAll('[data-dl]').forEach(x=>x.onclick=()=>downloadFormat(b,b.formats[x.dataset.dl]));
+  dlg.querySelectorAll('[data-sh]').forEach(x=>x.onclick=()=>shareFormat(b,b.formats[x.dataset.sh],x));
   if(!dlg.open)dlg.showModal();
   loadCover(b).then(u=>{if(u){const i=$('#dCover img');if(i){i.src=u;i.onload=()=>i.classList.add('ok');}}});
   const ei=b.formats.findIndex(f=>f.fmt==='EPUB');
@@ -650,6 +656,67 @@ function openDetail(b,note){
     const btn=dlg.querySelector(`[data-f="${ei}"]`);
     if(p&&btn&&p.pct>0.005)btn.textContent=`Continuar leyendo (${Math.round(p.pct*100)}%)`;
   });
+}
+const CAN_SHARE=typeof navigator.share==='function';
+const prepared={key:'',blob:null};
+async function blobFor(b,f,onProgress){
+  const saved=await kvGet(fileKey(b,f.fmt));
+  if(saved)return saved.blob;
+  if(offlineMode)throw new Error('no está descargado y no hay conexión');
+  const it=await fileItem(b,f);
+  return fetchFileBlob(it,onProgress,MIME[f.fmt]);
+}
+const progressMsg=(el,label)=>(g,t)=>{el.textContent=t?`${label} ${Math.round(g/t*100)}%`:`${label} ${mb(g)}`;};
+function saveBlobAs(blob,name){
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=name;
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
+}
+async function downloadFormat(b,f){
+  const msg=$('#dMsg');
+  const name=f.name+'.'+f.fmt.toLowerCase();
+  try{
+    msg.textContent='Descargando…';
+    const blob=await blobFor(b,f,progressMsg(msg,'Descargando…'));
+    saveBlobAs(blob,name);
+    msg.textContent='Guardado en la carpeta Descargas: '+name;
+  }catch(e){msg.textContent='No se pudo descargar: '+(e instanceof TypeError?'sin conexión':e.message);}
+}
+async function shareFormat(b,f,btn){
+  const msg=$('#dMsg');
+  const key=fileKey(b,f.fmt),name=f.name+'.'+f.fmt.toLowerCase();
+  try{
+    let blob;
+    if(prepared.key===key&&prepared.blob)blob=prepared.blob;   // ya preparado: se comparte en el mismo toque
+    else{
+      btn.disabled=true;
+      blob=await blobFor(b,f,progressMsg(msg,'Preparando…'));
+      prepared.key=key;prepared.blob=blob;
+      btn.disabled=false;
+    }
+    const file=new File([blob],name,{type:MIME[f.fmt]||'application/octet-stream'});
+    if(!(navigator.canShare&&navigator.canShare({files:[file]}))){
+      saveBlobAs(blob,name);
+      msg.textContent='Este navegador no permite compartir este formato directamente. Se ha guardado en Descargas: adjúntalo desde Gmail ('+name+').';
+      return;
+    }
+    try{
+      await navigator.share({files:[file],title:b.title});
+      msg.textContent='';
+    }catch(e){
+      if(e.name==='AbortError'){msg.textContent='';return;}
+      if(e.name==='NotAllowedError'){
+        btn.textContent='Compartir (listo)';
+        msg.textContent='El archivo está preparado. Pulsa de nuevo «Compartir (listo)».';
+        return;
+      }
+      throw e;
+    }
+  }catch(e){
+    btn.disabled=false;
+    msg.textContent='No se pudo compartir: '+(e instanceof TypeError?'sin conexión':e.message);
+  }
 }
 async function openFormat(b,f){
   if(f.fmt==='EPUB')return openReader(b,f);
