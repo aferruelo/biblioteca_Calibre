@@ -1,4 +1,4 @@
-const SHELL='cv-shell-v1', RT='cv-runtime-v1';
+const SHELL='cv-shell-v2', RT='cv-runtime-v2';
 const ASSETS=['./','./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png'];
 const EXTERNAL=['cdnjs.cloudflare.com','fonts.googleapis.com','fonts.gstatic.com'];
 

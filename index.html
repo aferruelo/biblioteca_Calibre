@@ -32,23 +32,15 @@ button{cursor:pointer}
 .screen{max-width:600px;margin:8vh auto 0;padding:0 24px}
 .screen h1{font-family:var(--serif);font-weight:600;font-size:1.9rem;line-height:1.15;margin:0 0 12px}
 .screen p{color:var(--muted);margin:0 0 18px;max-width:60ch}
+.screen label{display:block;font-weight:600;margin:0 0 6px}
 .btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:10px 18px;font-weight:600}
 .btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
 .btn.small{padding:7px 12px;font-size:.9rem}
 .btn:disabled{opacity:.45;cursor:not-allowed}
-.field{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);margin-bottom:12px}
-code{background:var(--chip);padding:2px 6px;border-radius:4px;word-break:break-all}
-#status.error,#browseMsg.error{color:#b3261e}
-@media (prefers-color-scheme:dark){#status.error,#browseMsg.error{color:#f2b8b5}}
+.field{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);margin-bottom:16px}
+#status.error{color:#b3261e}
+@media (prefers-color-scheme:dark){#status.error{color:#f2b8b5}}
 .row{display:flex;gap:10px;flex-wrap:wrap}
-
-.crumbs{color:var(--muted);margin-bottom:10px;word-break:break-all}
-.folders{border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden;margin-bottom:16px}
-.folders button{display:flex;justify-content:space-between;width:100%;text-align:left;background:none;border:0;
-  border-bottom:1px solid var(--line);padding:12px 14px}
-.folders button:last-child{border-bottom:0}
-.folders button:hover{background:var(--chip)}
-.found{color:var(--accent);font-weight:600;margin-bottom:12px}
 
 .bar{position:sticky;top:0;z-index:5;background:var(--surface);border-bottom:1px solid var(--line);
      display:flex;align-items:center;gap:10px;padding:10px 16px;padding-top:max(10px,env(safe-area-inset-top));flex-wrap:wrap}
@@ -109,7 +101,6 @@ dialog::backdrop{background:rgba(10,14,20,.55)}
 .dlbox{padding:22px}
 .dlbox h2{font-family:var(--serif);margin:0 0 4px;padding-right:24px}
 
-/* Lector */
 #reader{position:fixed;inset:0;z-index:50;background:#fff;color:#1b1f24;--rb:rgba(255,255,255,.97);--rl:#d5dce3}
 #reader[data-theme=sepia]{background:#f4ecd8;color:#4b3b2a;--rb:rgba(244,236,216,.98);--rl:#dccfae}
 #reader[data-theme=dark]{background:#12161c;color:#d8dee6;--rb:rgba(24,32,42,.98);--rl:#2a3441}
@@ -150,23 +141,17 @@ dialog::backdrop{background:rgba(10,14,20,.55)}
 </head>
 <body>
 
-<!-- Inicio de sesión / configuración -->
+<!-- Configuración -->
 <section id="welcome" class="screen" hidden>
   <h1>Tu biblioteca de Calibre, desde cualquier dispositivo</h1>
-  <p>Lee directamente la carpeta de OneDrive donde está tu biblioteca, sin tenerla sincronizada. Solo pide permiso de lectura.</p>
-
-  <div id="setup" hidden>
-    <p>Primera vez: pega el ID de aplicación (Client ID) del registro de la app en Azure.</p>
-    <input class="field" id="clientIdInput" placeholder="Client ID (00000000-0000-0000-0000-000000000000)" autocomplete="off">
-    <p>URI de redirección que debe estar registrada como tipo SPA:<br><code id="redirect"></code></p>
-    <button class="btn" id="saveClient">Guardar</button>
-  </div>
-
-  <div id="loginBox" hidden>
-    <div class="row">
-      <button class="btn" id="loginBtn">Iniciar sesión con Microsoft</button>
-      <button class="btn ghost" id="changeClient">Cambiar Client ID</button>
-    </div>
+  <p>Lee la carpeta de tu biblioteca en Google Drive. Solo hay que indicar una vez la clave de API y el enlace de la carpeta; se guardan únicamente en este navegador.</p>
+  <label for="keyInput">Clave de API de Google</label>
+  <input class="field" id="keyInput" placeholder="AIza…" autocomplete="off" spellcheck="false">
+  <label for="folderInput">Enlace de la carpeta de la biblioteca</label>
+  <input class="field" id="folderInput" placeholder="https://drive.google.com/drive/folders/…" autocomplete="off" spellcheck="false">
+  <div class="row">
+    <button class="btn" id="saveSetup">Guardar y abrir</button>
+    <button class="btn ghost" id="cancelSetup" hidden>Cancelar</button>
   </div>
   <p id="status" role="status" style="margin-top:16px"></p>
 </section>
@@ -176,23 +161,9 @@ dialog::backdrop{background:rgba(10,14,20,.55)}
   <p id="loadMsg" role="status"></p>
 </section>
 
-<section id="browse" class="screen" hidden>
-  <h1>Elige la carpeta de tu biblioteca</h1>
-  <p>Navega hasta la carpeta que contiene <b>metadata.db</b> (la raíz de la biblioteca de Calibre).</p>
-  <p id="browseMsg" role="status"></p>
-  <div class="crumbs" id="crumbs"></div>
-  <div class="folders" id="folders"></div>
-  <div class="found" id="found" hidden>Aquí hay una biblioteca de Calibre.</div>
-  <div class="row">
-    <button class="btn" id="useFolder" disabled>Usar esta carpeta</button>
-    <button class="btn ghost" id="upFolder">Subir un nivel</button>
-    <button class="btn ghost" id="backApp" hidden>Cancelar</button>
-  </div>
-</section>
-
 <div id="app" hidden>
   <header class="bar">
-    <h1 id="libName">Biblioteca</h1>
+    <h1 id="libName">Mi biblioteca</h1>
     <input type="search" id="q" placeholder="Buscar por título, autor, serie o etiqueta" aria-label="Buscar">
     <select id="sort" aria-label="Ordenar">
       <option value="title">Título</option>
@@ -205,8 +176,7 @@ dialog::backdrop{background:rgba(10,14,20,.55)}
     <button class="btn ghost small" id="viewBtn">Ver como lista</button>
     <button class="btn ghost small" id="filtersBtn">Filtros</button>
     <button class="btn ghost small" id="reload">Actualizar</button>
-    <button class="btn ghost small" id="change">Cambiar carpeta</button>
-    <button class="btn ghost small" id="logout">Cerrar sesión</button>
+    <button class="btn ghost small" id="change">Ajustes</button>
   </header>
   <div class="layout">
     <aside id="facets" aria-label="Filtros"></aside>
@@ -254,24 +224,20 @@ dialog::backdrop{background:rgba(10,14,20,.55)}
 const SQLJS='https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/';
 const JSZIP='https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
 const EPUBJS='https://cdnjs.cloudflare.com/ajax/libs/epub.js/0.3.93/epub.min.js';
-const AUTH='https://login.microsoftonline.com/common/oauth2/v2.0';
-const G='https://graph.microsoft.com/v1.0';
-const SCOPE='Files.Read offline_access';
-const REDIRECT=location.origin+location.pathname.replace(/index\.html$/,'');
+const DRIVE='https://www.googleapis.com/drive/v3/';
 const PAGE=120;
-const INLINE=['PDF','TXT','HTML','HTM'];
 const MIME={EPUB:'application/epub+zip',PDF:'application/pdf',TXT:'text/plain',HTML:'text/html',HTM:'text/html'};
-const LANGS={spa:'Español',eng:'Inglés',fra:'Francés',deu:'Alemán',ita:'Italiano',por:'Portugués',lat:'Latín',cat:'Catalán',rus:'Ruso',zho:'Chino',jpn:'Japonés',nld:'Neerlandés',glg:'Gallego',eus:'Euskera'};
+const LANGS={spa:'Español',eng:'Inglés',fra:'Francés',deu:'Alemán',ita:'Italiano',por:'Portugués',lat:'Latín',cat:'Catalán',rus:'Ruso',zho:'Chino',jpn:'Japonés',nld:'Neerlandés',glg:'Gallego',eus:'Euskera',ara:'Árabe'};
 
 const $=s=>document.querySelector(s);
 const ls=localStorage;
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+const nfc=s=>String(s).normalize('NFC');
 const langName=c=>LANGS[c]||c;
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-const enc=p=>p.split('/').filter(Boolean).map(encodeURIComponent).join('/');
 const mb=n=>(n/1048576).toFixed(1)+' MB';
-function show(name){for(const id of ['welcome','loading','browse','app'])$('#'+id).hidden=id!==name;}
+function show(name){for(const id of ['welcome','loading','app'])$('#'+id).hidden=id!==name;}
 function setStatus(t,err){const s=$('#status');s.textContent=t;s.className=err?'error':'';$('#loadMsg').textContent=t;}
 
 /* ================= Almacenamiento local (IndexedDB) ================= */
@@ -281,99 +247,113 @@ async function kvSet(k,v){const d=await idb();await new Promise((res,rej)=>{cons
 async function kvDel(k){try{const d=await idb();await new Promise((res,rej)=>{const t=d.transaction('kv','readwrite');t.objectStore('kv').delete(k);t.oncomplete=res;t.onerror=()=>rej(t.error);});}catch{}}
 const kvSetQuiet=(k,v)=>kvSet(k,v).catch(()=>{});
 
-/* ================= Autenticación Microsoft (OAuth con PKCE) ================= */
-const clientId=()=>ls.getItem('cv_client')||'';
-const getTok=()=>{try{return JSON.parse(ls.getItem('cv_tok'));}catch{return null}};
-const b64url=buf=>btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+/* ================= Ajustes (clave y carpeta) ================= */
+const apiKey=()=>ls.getItem('cv_key')||'';
+const rootId=()=>ls.getItem('cv_root')||'';
+function parseFolder(s){
+  s=(s||'').trim();
+  const m=s.match(/folders\/([A-Za-z0-9_-]{10,})/)||s.match(/[?&]id=([A-Za-z0-9_-]{10,})/);
+  if(m)return m[1];
+  return /^[A-Za-z0-9_-]{15,}$/.test(s)?s:'';
+}
+function showSetup(msg){
+  show('welcome');
+  $('#keyInput').value=apiKey();
+  $('#folderInput').value=rootId()?'https://drive.google.com/drive/folders/'+rootId():'';
+  $('#cancelSetup').hidden=!books.length;
+  setStatus(msg||'',!!msg);
+}
+$('#saveSetup').onclick=()=>{
+  const k=$('#keyInput').value.trim(),f=parseFolder($('#folderInput').value);
+  if(!/^AIza[0-9A-Za-z_-]{20,}$/.test(k)){setStatus('La clave de API debe empezar por AIza…',true);return;}
+  if(!f){setStatus('No reconozco ese enlace o identificador de carpeta de Google Drive.',true);return;}
+  if(f!==rootId()){dirCache.clear();books=[];}
+  ls.setItem('cv_key',k);ls.setItem('cv_root',f);start(f);
+};
+$('#cancelSetup').onclick=()=>show('app');
 
-async function login(){
-  const verifier=b64url(crypto.getRandomValues(new Uint8Array(32)));
-  const challenge=b64url(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(verifier)));
-  const st=b64url(crypto.getRandomValues(new Uint8Array(12)));
-  sessionStorage.setItem('pkce',JSON.stringify({verifier,st}));
-  const u=new URL(AUTH+'/authorize');
-  u.search=new URLSearchParams({client_id:clientId(),response_type:'code',redirect_uri:REDIRECT,response_mode:'query',
-    scope:SCOPE,code_challenge:challenge,code_challenge_method:'S256',state:st,prompt:'select_account'});
-  location.href=u.toString();
+/* ================= API de Google Drive ================= */
+const gate={n:0,q:[]};
+function limit(fn){
+  return new Promise((res,rej)=>{
+    const run=()=>{gate.n++;fn().then(res,rej).finally(()=>{gate.n--;const nx=gate.q.shift();if(nx)nx();});};
+    gate.n<8?run():gate.q.push(run);
+  });
 }
-async function tokenRequest(params){
-  const r=await fetch(AUTH+'/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
-    body:new URLSearchParams({client_id:clientId(),scope:SCOPE,...params})});
-  const j=await r.json();
-  if(!r.ok)throw new Error(j.error_description||j.error||'Error de autenticación');
-  const prev=getTok();
-  ls.setItem('cv_tok',JSON.stringify({access:j.access_token,refresh:j.refresh_token||(prev&&prev.refresh),exp:Date.now()+(j.expires_in-120)*1000}));
+function dUrl(path,q){return DRIVE+path+'?'+new URLSearchParams({...q,key:apiKey()});}
+function friendly(status,reason,msg){
+  if(reason==='keyInvalid'||/API key not valid/i.test(msg))return 'La clave de API no es válida.';
+  if(/referer/i.test(msg))return 'La clave de API no admite este sitio. Revisa la restricción de sitios web en Google Cloud.';
+  if(reason==='accessNotConfigured'||/has not been used|is disabled/i.test(msg))return 'La API de Google Drive no está habilitada en el proyecto de Google Cloud.';
+  if(status===404)return 'No encuentro esa carpeta en Google Drive, o no es pública.';
+  if(status===403)return 'Google no permite leer la carpeta. Comprueba que está compartida con «Cualquier persona con el enlace».';
+  return 'Google respondió con el error '+status+'.';
 }
-async function handleCallback(){
-  const p=new URLSearchParams(location.search);
-  if(!p.has('code')&&!p.has('error'))return;
-  const saved=JSON.parse(sessionStorage.getItem('pkce')||'null');
-  history.replaceState({},'',REDIRECT);
-  if(p.has('error'))throw new Error((p.get('error_description')||p.get('error')).replace(/\+/g,' '));
-  if(!saved||saved.st!==p.get('state'))throw new Error('Respuesta de inicio de sesión no válida. Inténtalo de nuevo.');
-  await tokenRequest({grant_type:'authorization_code',code:p.get('code'),redirect_uri:REDIRECT,code_verifier:saved.verifier});
-}
-async function accessToken(force){
-  const t=getTok();
-  if(!t)throw new Error('NOAUTH');
-  if(!force&&Date.now()<t.exp)return t.access;
-  try{await tokenRequest({grant_type:'refresh_token',refresh_token:t.refresh});}
-  catch(e){
-    if(e instanceof TypeError)throw e;          // sin red: conservar la sesión
-    ls.removeItem('cv_tok');throw new Error('NOAUTH');
+async function dfetch(url,tries=4){
+  for(let i=0;;i++){
+    const r=await fetch(url);
+    if(r.ok)return r;
+    let reason='',msg='';
+    try{const j=await r.clone().json();msg=(j.error&&j.error.message)||'';reason=(j.error&&j.error.errors&&j.error.errors[0]&&j.error.errors[0].reason)||'';}catch{}
+    const retry=r.status===429||r.status>=500||(r.status===403&&/rateLimit/i.test(reason));
+    if(retry&&i<tries){await sleep(600*2**i);continue;}
+    throw Object.assign(new Error(friendly(r.status,reason,msg)),{status:r.status});
   }
-  return getTok().access;
 }
-async function gfetch(url,opt={},retry=true){
-  const tok=await accessToken();
-  const r=await fetch(url.startsWith('http')?url:G+url,{...opt,headers:{...(opt.headers||{}),Authorization:'Bearer '+tok}});
-  if(r.status===401&&retry){await accessToken(true);return gfetch(url,opt,false);}
-  if(r.status===429&&retry){await sleep((+r.headers.get('Retry-After')||2)*1000);return gfetch(url,opt,false);}
-  return r;
+async function dlist(parent,fields){
+  let tok=null;const all=[];
+  do{
+    const r=await limit(()=>dfetch(dUrl('files',{q:`'${parent}' in parents and trashed=false`,pageSize:'1000',
+      fields:`nextPageToken,files(${fields})`,...(tok?{pageToken:tok}:{})})));
+    const j=await r.json();all.push(...j.files);tok=j.nextPageToken||null;
+  }while(tok);
+  return all;
 }
 
-/* ================= Explorador de carpetas de OneDrive ================= */
-let browsePath='';
-async function listFolder(p){
-  let url=(p?`/me/drive/root:/${enc(p)}:/children`:'/me/drive/root/children')+'?$select=name,folder,file&$top=200';
-  const items=[];
-  for(let i=0;i<5&&url;i++){
-    const r=await gfetch(url);
-    if(r.status===404)throw new Error('NOTFOUND');
-    if(!r.ok)throw new Error('OneDrive respondió con el error '+r.status);
-    const j=await r.json();items.push(...j.value);url=j['@odata.nextLink']||null;
+/* Índice perezoso de carpetas: no se recorre todo el árbol, solo lo que se necesita */
+const dirCache=new Map();
+function children(id){
+  if(!dirCache.has(id)){
+    const p=dlist(id,'id,name,mimeType,size,modifiedTime,thumbnailLink').then(arr=>{
+      const m=new Map();for(const f of arr)m.set(nfc(f.name),f);return m;});
+    p.catch(()=>dirCache.delete(id));
+    dirCache.set(id,p);
   }
-  return items;
+  return dirCache.get(id);
 }
-async function showBrowse(p,msg){
-  show('browse');
-  $('#backApp').hidden=!books.length;
-  const bm=$('#browseMsg');bm.textContent=msg||'';bm.className=msg?'error':'';
-  let items;
-  try{items=await listFolder(p);browsePath=p;}
-  catch(e){
-    if(e.message==='NOAUTH')return needLogin();
-    if(e.message==='NOTFOUND'&&p)return showBrowse('','No encuentro esa carpeta. Elige de nuevo.');
-    bm.textContent=e instanceof TypeError?'Sin conexión.':e.message;bm.className='error';return;
+async function folderOf(path){
+  let id=rootId();
+  for(const seg of path.split('/').filter(Boolean)){
+    const m=await children(id);
+    const it=m.get(nfc(seg));
+    if(!it)throw new Error('No encuentro «'+seg+'» en Google Drive.');
+    id=it.id;
   }
-  $('#crumbs').textContent='OneDrive'+(browsePath?' / '+browsePath.split('/').join(' / '):'');
-  const hasDb=items.some(i=>i.file&&i.name==='metadata.db');
-  $('#found').hidden=!hasDb;
-  $('#useFolder').disabled=!hasDb;
-  $('#upFolder').hidden=!browsePath;
-  const box=$('#folders');box.innerHTML='';
-  const folders=items.filter(i=>i.folder).sort((a,b)=>a.name.localeCompare(b.name,'es'));
-  if(!folders.length)box.innerHTML='<button disabled>No hay subcarpetas aquí</button>';
-  for(const f of folders){
-    const b=document.createElement('button');
-    b.innerHTML=`<span>${esc(f.name)}</span><span>${f.folder.childCount??''}</span>`;
-    b.onclick=()=>showBrowse((browsePath?browsePath+'/':'')+f.name);
-    box.appendChild(b);
-  }
+  return id;
 }
-$('#upFolder').onclick=()=>showBrowse(browsePath.split('/').slice(0,-1).join('/'));
-$('#useFolder').onclick=()=>{ls.setItem('cv_lib',browsePath);start(browsePath);};
-$('#backApp').onclick=()=>show('app');
+function bookFiles(b){
+  if(!b._files){b._files=folderOf(b.path).then(children);b._files.catch(()=>{b._files=null;});}
+  return b._files;
+}
+async function fileItem(b,f){
+  const m=await bookFiles(b);
+  let it=m.get(nfc(f.name+'.'+f.fmt.toLowerCase()));
+  if(!it){
+    const ext='.'+f.fmt.toLowerCase();
+    const c=[...m.values()].filter(x=>x.name.toLowerCase().endsWith(ext));
+    if(c.length===1)it=c[0];
+  }
+  if(!it)throw new Error('el archivo no está en Google Drive');
+  return it;
+}
+async function fetchFileBlob(item,onProgress,type){
+  const r=await dfetch(dUrl('files/'+item.id,{alt:'media'}));
+  const total=+item.size||+r.headers.get('Content-Length')||0;
+  if(!r.body||!onProgress){const bl=await r.blob();return type?new Blob([bl],{type}):bl;}
+  const rd=r.body.getReader(),chunks=[];let got=0;
+  for(;;){const {done,value}=await rd.read();if(done)break;chunks.push(value);got+=value.length;onProgress(got,total);}
+  return new Blob(chunks,type?{type}:{});
+}
 
 /* ================= Carga de scripts ================= */
 function loadScript(src,test){
@@ -408,7 +388,7 @@ function mapBook(r){
   const b={id:r.id,title:r.title||'(sin título)',sort:r.sort||r.title||'',authors,authorSort:r.author_sort||authors[0]||'',
     series:r.series||'',seriesIndex:r.series_index,tags:split(r.tags),formats,comments:r.comments||'',publisher:r.publisher||'',
     langs:split(r.langs),rating:r.rating||0,added:Date.parse(r.timestamp)||0,year:year>=1000?year:null,
-    path:r.path,hasCover:!!r.has_cover,coverUrl:null,_el:null};
+    path:r.path,hasCover:!!r.has_cover,coverUrl:null,_el:null,_files:null};
   b.hay=norm([b.title,authors.join(' '),b.series,b.tags.join(' '),b.publisher].join(' '));
   return b;
 }
@@ -420,20 +400,16 @@ async function readLibrary(p){
   if(!navigator.onLine&&cached){buf=cached.buf;offline=true;}
   else{
     try{
-      setStatus('Consultando metadata.db en OneDrive…');
-      const dbPath=`/me/drive/root:/${enc(p+'/metadata.db')}`;
-      const mr=await gfetch(`${dbPath}?$select=size,lastModifiedDateTime,@microsoft.graph.downloadUrl`);
-      if(mr.status===404)throw new Error('No encuentro metadata.db en «'+p+'».');
-      if(!mr.ok)throw new Error('OneDrive respondió con el error '+mr.status);
-      const meta=await mr.json();
-      if(cached&&cached.mod===meta.lastModifiedDateTime&&cached.size===meta.size){buf=cached.buf;}
+      setStatus('Buscando metadata.db en Google Drive…');
+      const m=await children(p);
+      const db=m.get('metadata.db');
+      if(!db)throw new Error('No encuentro metadata.db en esa carpeta de Google Drive. Comprueba el enlace.');
+      if(cached&&cached.mod===db.modifiedTime&&cached.size===+db.size){buf=cached.buf;}
       else{
-        setStatus(`Descargando metadata.db (${mb(meta.size)})…`);
-        let resp=null;
-        try{resp=await fetch(meta['@microsoft.graph.downloadUrl']);if(!resp.ok)resp=null;}catch{resp=null;}
-        if(!resp){resp=await gfetch(`${dbPath}:/content`);if(!resp.ok)throw new Error('No se pudo descargar metadata.db (error '+resp.status+').');}
-        buf=new Uint8Array(await resp.arrayBuffer());
-        kvSetQuiet(cacheKey,{mod:meta.lastModifiedDateTime,size:meta.size,buf});
+        setStatus(`Descargando metadata.db (${mb(+db.size)})…`);
+        const r=await dfetch(dUrl('files/'+db.id,{alt:'media'}));
+        buf=new Uint8Array(await r.arrayBuffer());
+        kvSetQuiet(cacheKey,{mod:db.modifiedTime,size:+db.size,buf});
       }
     }catch(e){
       if(e instanceof TypeError&&cached){buf=cached.buf;offline=true;}
@@ -452,45 +428,28 @@ async function readLibrary(p){
 }
 
 /* ================= Descargas sin conexión ================= */
-let dlIndex={};
+let libPath='',books=[],filtered=[],shown=0,offlineMode=false,dlIndex={};
 const dk=(b,fmt)=>b.id+'|'+fmt;
 const fileKey=(b,fmt)=>'f:'+libPath+'|'+b.id+'|'+fmt;
 const isDl=(b,fmt)=>!!dlIndex[dk(b,fmt)];
 const anyDl=b=>b.formats.some(f=>isDl(b,f.fmt));
-const relOf=(b,f)=>libPath+'/'+b.path+'/'+f.name+'.'+f.fmt.toLowerCase();
 const saveIndex=()=>kvSet('dl:'+libPath,dlIndex);
-
-async function getDownloadUrl(rel){
-  const r=await gfetch(`/me/drive/root:/${enc(rel)}?$select=@microsoft.graph.downloadUrl`);
-  if(!r.ok)throw new Error(r.status===404?'el archivo no está en OneDrive':'error '+r.status);
-  return (await r.json())['@microsoft.graph.downloadUrl'];
-}
-async function fetchFileBlob(rel,onProgress,type){
-  const r=await gfetch(`/me/drive/root:/${enc(rel)}?$select=size,@microsoft.graph.downloadUrl`);
-  if(!r.ok)throw new Error(r.status===404?'el archivo no está en OneDrive':'error '+r.status);
-  const meta=await r.json();
-  let resp=null;
-  try{resp=await fetch(meta['@microsoft.graph.downloadUrl']);if(!resp.ok)resp=null;}catch{resp=null;}
-  if(!resp){resp=await gfetch(`/me/drive/root:/${enc(rel)}:/content`);if(!resp.ok)throw new Error('error '+resp.status);}
-  const total=meta.size||+resp.headers.get('Content-Length')||0;
-  if(!resp.body||!onProgress){const bl=await resp.blob();return type?new Blob([bl],{type}):bl;}
-  const rd=resp.body.getReader(),chunks=[];let got=0;
-  for(;;){const {done,value}=await rd.read();if(done)break;chunks.push(value);got+=value.length;onProgress(got,total);}
-  return new Blob(chunks,type?{type}:{});
-}
 
 async function saveOffline(b,f){
   const msg=$('#dMsg');
   try{
     if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();
-    const blob=await fetchFileBlob(relOf(b,f),(g,t)=>{
+    const item=await fileItem(b,f);
+    const blob=await fetchFileBlob(item,(g,t)=>{
       msg.textContent=t?`Descargando ${f.fmt}… ${Math.round(g/t*100)}%`:`Descargando ${f.fmt}… ${mb(g)}`;
     },MIME[f.fmt]);
     await kvSet(fileKey(b,f.fmt),{blob});
     dlIndex[dk(b,f.fmt)]={id:b.id,fmt:f.fmt,title:b.title,authors:b.authors.join(', '),size:blob.size,ts:Date.now()};
     await saveIndex();
     const ck='c:'+libPath+'|'+b.id;
-    if(b.hasCover&&!(await kvGet(ck))){try{await kvSet(ck,await fetchFileBlob(libPath+'/'+b.path+'/cover.jpg'));}catch{}}
+    if(b.hasCover&&!(await kvGet(ck))){
+      try{const m=await bookFiles(b);const c=m.get('cover.jpg');if(c)await kvSet(ck,await fetchFileBlob(c));}catch{}
+    }
     updateBadge(b);
     openDetail(b,`Guardado en este dispositivo (${mb(blob.size)}).`);
   }catch(e){
@@ -537,44 +496,19 @@ $('#dlBtn').onclick=openDownloads;
 $('#closeDl').onclick=()=>$('#dlDialog').close();
 
 /* ================= Portadas ================= */
-const coverQ=[];let coverBusy=0,coverTimer=null;
-function requestCover(b){return new Promise(res=>{coverQ.push({b,res,tries:0});clearTimeout(coverTimer);coverTimer=setTimeout(flushCovers,40);});}
-function flushCovers(){
-  while(coverQ.length&&coverBusy<3){
-    const chunk=coverQ.splice(0,20);coverBusy++;
-    sendBatch(chunk).finally(()=>{coverBusy--;if(coverQ.length)flushCovers();});
-  }
-}
-async function sendBatch(chunk){
-  try{
-    const body={requests:chunk.map((c,i)=>({id:String(i),method:'GET',
-      url:`/me/drive/root:/${enc(libPath+'/'+c.b.path+'/cover.jpg')}?$select=id,@microsoft.graph.downloadUrl&$expand=thumbnails($select=medium)`}))};
-    const r=await gfetch('/$batch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    if(!r.ok)throw new Error('batch '+r.status);
-    const j=await r.json();
-    const byId=new Map(j.responses.map(x=>[x.id,x]));
-    chunk.forEach((c,i)=>{
-      const x=byId.get(String(i));
-      if(x&&x.status===200){
-        const t=x.body&&x.body.thumbnails&&x.body.thumbnails[0]&&x.body.thumbnails[0].medium;
-        c.res((t&&t.url)||(x.body&&x.body['@microsoft.graph.downloadUrl'])||null);
-      }else if(x&&(x.status===429||x.status===503)&&c.tries<3){
-        c.tries++;const wait=(+(x.headers&&x.headers['Retry-After'])||3)*1000;
-        setTimeout(()=>{coverQ.push(c);flushCovers();},wait);
-      }else{
-        if(x&&x.status===404)c.b.hasCover=false;
-        c.res(null);
-      }
-    });
-  }catch{chunk.forEach(c=>c.res(null));}
-}
 async function loadCover(b){
   if(b.coverUrl)return b.coverUrl;
   const saved=await kvGet('c:'+libPath+'|'+b.id);
   if(saved){b.coverUrl=URL.createObjectURL(saved);return b.coverUrl;}
   if(offlineMode||!b.hasCover)return null;
-  b.coverUrl=await requestCover(b);
-  return b.coverUrl;
+  try{
+    const m=await bookFiles(b);
+    const c=m.get('cover.jpg');
+    if(!c){b.hasCover=false;return null;}
+    if(c.thumbnailLink)b.coverUrl=c.thumbnailLink.replace(/=s\d+$/,'=s330');
+    else b.coverUrl=URL.createObjectURL(await fetchFileBlob(c));
+    return b.coverUrl;
+  }catch{return null;}
 }
 const coverObserver=new IntersectionObserver(entries=>{
   for(const e of entries){
@@ -586,7 +520,6 @@ const coverObserver=new IntersectionObserver(entries=>{
 },{rootMargin:'300px'});
 
 /* ================= Interfaz de biblioteca ================= */
-let libPath='',books=[],filtered=[],shown=0,offlineMode=false;
 const state={q:'',tag:'',fmt:'',lang:'',author:'',series:'',dl:false,sort:'title',list:false};
 function hueOf(s){let h=0;for(const c of s)h=(h*31+c.charCodeAt(0))%360;return h;}
 function coverHtml(b){return `<div class="ph" style="background:hsl(${hueOf(b.title)},28%,32%)">${esc(b.title)}</div><img alt="">`;}
@@ -685,7 +618,7 @@ function openDetail(b,note){
   const facts=[b.series?`${esc(b.series)}${b.seriesIndex?' #'+b.seriesIndex:''}`:'',esc(b.publisher),b.year||'',b.langs.map(langName).join(', '),stars].filter(Boolean).join(' · ');
   const rows=b.formats.map((f,i)=>{
     const d=isDl(b,f.fmt),lock=offlineMode&&!d?'disabled':'';
-    const label=f.fmt==='EPUB'?'Leer EPUB':INLINE.includes(f.fmt)?`Abrir ${f.fmt}`:`Descargar ${f.fmt}`;
+    const label=f.fmt==='EPUB'?'Leer EPUB':f.fmt==='PDF'?'Abrir PDF':`Descargar ${f.fmt}`;
     return `<div class="frow"><button class="btn small" data-f="${i}" ${lock}>${label}</button><button class="btn ghost small" data-off="${i}" ${lock}>${d?'✓ Quitar descarga':'Guardar sin conexión'}</button></div>`;
   }).join('');
   $('#detailBody').innerHTML=`<div class="detail">
@@ -721,15 +654,15 @@ function openDetail(b,note){
 async function openFormat(b,f){
   if(f.fmt==='EPUB')return openReader(b,f);
   const msg=$('#dMsg');msg.textContent='Preparando el archivo…';
-  const inline=INLINE.includes(f.fmt);
-  const w=inline?window.open('','_blank'):null;
+  const w=f.fmt==='PDF'?window.open('','_blank'):null;
   try{
     let url;
     const saved=await kvGet(fileKey(b,f.fmt));
     if(saved)url=URL.createObjectURL(saved.blob);
     else{
       if(offlineMode)throw new Error('no está descargado y no hay conexión');
-      url=await getDownloadUrl(relOf(b,f));
+      const it=await fileItem(b,f);
+      url=f.fmt==='PDF'?`https://drive.google.com/file/d/${it.id}/view`:`https://drive.google.com/uc?export=download&id=${it.id}`;
     }
     if(w)w.location.href=url;
     else{const a=document.createElement('a');a.href=url;a.download=f.name+'.'+f.fmt.toLowerCase();document.body.appendChild(a);a.click();a.remove();}
@@ -741,7 +674,7 @@ $('#detail').addEventListener('click',e=>{if(e.target===$('#detail'))$('#detail'
 $('#dlDialog').addEventListener('click',e=>{if(e.target===$('#dlDialog'))$('#dlDialog').close();});
 
 /* ================= Lector EPUB ================= */
-let rb=null,rr=null,rBook=null;
+let rb=null,rr=null;
 let rPrefs=(()=>{try{return JSON.parse(ls.getItem('cv_rdr'));}catch{return null}})()||
   {size:110,theme:matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light',font:'serif',flow:'paginated'};
 const THEMES={
@@ -787,7 +720,6 @@ function renderToc(nav){
 
 async function openReader(b,f){
   $('#detail').close();
-  rBook=b;
   const load=$('#rLoad');
   $('#reader').hidden=false;load.hidden=false;load.textContent='Preparando el libro…';
   $('#rTitle').textContent=b.title;
@@ -801,7 +733,8 @@ async function openReader(b,f){
     if(saved)blob=saved.blob;
     else{
       if(offlineMode)throw new Error('Este libro no está descargado y no hay conexión.');
-      blob=await fetchFileBlob(relOf(b,f),(g,t)=>{load.textContent=t?`Descargando el libro… ${Math.round(g/t*100)}%`:`Descargando el libro… ${mb(g)}`;},MIME.EPUB);
+      const item=await fileItem(b,f);
+      blob=await fetchFileBlob(item,(g,t)=>{load.textContent=t?`Descargando el libro… ${Math.round(g/t*100)}%`:`Descargando el libro… ${mb(g)}`;},MIME.EPUB);
     }
     load.textContent='Abriendo el libro…';
     await loadReaderLibs();
@@ -898,14 +831,6 @@ $('#segFlow').onclick=e=>{
 };
 
 /* ================= Flujo principal ================= */
-function updateWelcome(){
-  const has=!!clientId();
-  $('#setup').hidden=has;
-  $('#loginBox').hidden=!has;
-  $('#redirect').textContent=REDIRECT;
-}
-function needLogin(msg){show('welcome');updateWelcome();setStatus(msg||'',!!msg);}
-
 async function start(p){
   show('loading');setStatus('Abriendo la biblioteca…');
   try{
@@ -913,45 +838,36 @@ async function start(p){
     books=res.books;offlineMode=res.offline;libPath=p;
     dlIndex=(await kvGet('dl:'+p))||{};
     state.dl=offlineMode;
-    $('#libName').textContent=p.split('/').pop()||'OneDrive';
     show('app');apply();
-    if(!offlineMode)setTimeout(()=>{loadReaderLibs().catch(()=>{});},2500);   // deja el lector en caché para uso sin conexión
+    if(!offlineMode)setTimeout(()=>{loadReaderLibs().catch(()=>{});},2500);
   }catch(e){
-    if(e.message==='NOAUTH')return needLogin('La sesión ha caducado. Vuelve a iniciar sesión.');
-    showBrowse(p.split('/').slice(0,-1).join('/'),e.message);
+    showSetup(e.message);
   }
 }
 
-$('#saveClient').onclick=()=>{
-  const v=$('#clientIdInput').value.trim();
-  if(!/^[0-9a-f-]{36}$/i.test(v)){setStatus('El Client ID debe tener el formato 00000000-0000-0000-0000-000000000000.',true);return;}
-  ls.setItem('cv_client',v);setStatus('');updateWelcome();
-};
-$('#changeClient').onclick=()=>{ls.removeItem('cv_client');ls.removeItem('cv_tok');updateWelcome();};
-$('#loginBtn').onclick=login;
 $('#q').addEventListener('input',e=>{state.q=e.target.value;apply();});
 $('#sort').addEventListener('change',e=>{state.sort=e.target.value;apply();});
 $('#viewBtn').onclick=()=>{state.list=!state.list;renderAll();};
 $('#filtersBtn').onclick=()=>$('#facets').classList.toggle('open');
-$('#reload').onclick=()=>start(libPath);
-$('#reconnect').onclick=()=>start(libPath);
-$('#change').onclick=()=>showBrowse(libPath.split('/').slice(0,-1).join('/'));
-$('#logout').onclick=()=>{ls.removeItem('cv_tok');ls.removeItem('cv_lib');books=[];needLogin();};
+const refresh=()=>{dirCache.clear();books.forEach(b=>{b._files=null;});start(libPath||rootId());};
+$('#reload').onclick=refresh;
+$('#reconnect').onclick=refresh;
+$('#change').onclick=()=>showSetup();
 
 (async function boot(){
   if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
-  if(location.protocol==='file:'||!window.isSecureContext){
-    show('welcome');$('#setup').hidden=true;$('#loginBox').hidden=true;
-    setStatus('Esta app tiene que abrirse desde una dirección https (por ejemplo GitHub Pages), no como archivo local.',true);
-    return;
+  // Enlace de configuración rápida: …/#k=CLAVE&f=ID_CARPETA (se guarda y se borra de la barra de direcciones)
+  if(location.hash.length>1){
+    const h=new URLSearchParams(location.hash.slice(1));
+    const k=h.get('k'),f=parseFolder(h.get('f')||'');
+    if(k&&/^AIza[0-9A-Za-z_-]{20,}$/.test(k))ls.setItem('cv_key',k);
+    if(f)ls.setItem('cv_root',f);
+    history.replaceState(null,'',location.pathname+location.search);
   }
-  try{await handleCallback();}
-  catch(e){needLogin(e.message);return;}
-  updateWelcome();
-  const lib=ls.getItem('cv_lib');
-  if(lib&&!navigator.onLine&&await kvGet('db:'+lib))return start(lib);
-  if(!clientId()||!getTok()){show('welcome');return;}
-  if(lib)start(lib);else showBrowse('');
+  const root=rootId();
+  if(root&&!navigator.onLine&&await kvGet('db:'+root))return start(root);
+  if(!apiKey()||!root){showSetup();return;}
+  start(root);
 })();
 </script>
 </body>
