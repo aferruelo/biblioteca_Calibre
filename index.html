@@ -149,6 +149,10 @@ dialog::backdrop{background:rgba(10,14,20,.55)}
   <input class="field" id="keyInput" placeholder="AIza…" autocomplete="off" spellcheck="false">
   <label for="folderInput">Enlace de la carpeta de la biblioteca</label>
   <input class="field" id="folderInput" placeholder="https://drive.google.com/drive/folders/…" autocomplete="off" spellcheck="false">
+  <label for="kindleUrlInput">Envío al Kindle (opcional): URL del script</label>
+  <input class="field" id="kindleUrlInput" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off" spellcheck="false">
+  <label for="kindleTokenInput">Clave secreta del script</label>
+  <input class="field" id="kindleTokenInput" placeholder="La clave que pusiste en el script" autocomplete="off" spellcheck="false">
   <div class="row">
     <button class="btn" id="saveSetup">Guardar y abrir</button>
     <button class="btn ghost" id="cancelSetup" hidden>Cancelar</button>
@@ -250,6 +254,9 @@ const kvSetQuiet=(k,v)=>kvSet(k,v).catch(()=>{});
 /* ================= Ajustes (clave y carpeta) ================= */
 const apiKey=()=>ls.getItem('cv_key')||'';
 const rootId=()=>ls.getItem('cv_root')||'';
+const kUrl=()=>ls.getItem('cv_kurl')||'';
+const kTok=()=>ls.getItem('cv_ktok')||'';
+const KURL_RE=/^https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec$/;
 function parseFolder(s){
   s=(s||'').trim();
   const m=s.match(/folders\/([A-Za-z0-9_-]{10,})/)||s.match(/[?&]id=([A-Za-z0-9_-]{10,})/);
@@ -260,6 +267,8 @@ function showSetup(msg){
   show('welcome');
   $('#keyInput').value=apiKey();
   $('#folderInput').value=rootId()?'https://drive.google.com/drive/folders/'+rootId():'';
+  $('#kindleUrlInput').value=kUrl();
+  $('#kindleTokenInput').value=kTok();
   $('#cancelSetup').hidden=!books.length;
   setStatus(msg||'',!!msg);
 }
@@ -267,8 +276,13 @@ $('#saveSetup').onclick=()=>{
   const k=$('#keyInput').value.trim(),f=parseFolder($('#folderInput').value);
   if(!/^AIza[0-9A-Za-z_-]{20,}$/.test(k)){setStatus('La clave de API debe empezar por AIza…',true);return;}
   if(!f){setStatus('No reconozco ese enlace o identificador de carpeta de Google Drive.',true);return;}
+  const ku=$('#kindleUrlInput').value.trim(),kt=$('#kindleTokenInput').value.trim();
+  if(ku&&!KURL_RE.test(ku)){setStatus('La URL del script debe tener el formato https://script.google.com/macros/s/…/exec',true);return;}
+  if(ku&&!kt){setStatus('Falta la clave secreta del script de Kindle.',true);return;}
   if(f!==rootId()){dirCache.clear();books=[];}
-  ls.setItem('cv_key',k);ls.setItem('cv_root',f);start(f);
+  ls.setItem('cv_key',k);ls.setItem('cv_root',f);
+  if(ku){ls.setItem('cv_kurl',ku);ls.setItem('cv_ktok',kt);}else{ls.removeItem('cv_kurl');ls.removeItem('cv_ktok');}
+  start(f);
 };
 $('#cancelSetup').onclick=()=>show('app');
 
@@ -620,10 +634,11 @@ function openDetail(b,note){
     const d=isDl(b,f.fmt),lock=offlineMode&&!d?'disabled':'';
     const label=f.fmt==='EPUB'?'Leer EPUB':f.fmt==='PDF'?'Abrir PDF':`Descargar ${f.fmt}`;
     const dlBtn=(f.fmt==='EPUB'||f.fmt==='PDF')?`<button class="btn ghost small" data-dl="${i}" ${lock}>Descargar</button>`:'';
+    const kBtn=(f.fmt==='EPUB'||f.fmt==='PDF')?`<button class="btn small" data-k="${i}" ${offlineMode?'disabled':''}>Enviar al Kindle</button>`:'';
     const shBtn=CAN_SHARE?`<button class="btn ghost small" data-sh="${i}" ${lock}>Compartir</button>`:'';
-    return `<div class="frow"><button class="btn small" data-f="${i}" ${lock}>${label}</button>${dlBtn}${shBtn}<button class="btn ghost small" data-off="${i}" ${lock}>${d?'✓ Quitar descarga':'Guardar sin conexión'}</button></div>`;
+    return `<div class="frow"><button class="btn small" data-f="${i}" ${lock}>${label}</button>${kBtn}${dlBtn}${shBtn}<button class="btn ghost small" data-off="${i}" ${lock}>${d?'✓ Quitar descarga':'Guardar sin conexión'}</button></div>`;
   }).join('');
-  const tip=CAN_SHARE&&b.formats.some(f=>f.fmt==='EPUB')?'<p class="facts">Para el Kindle: pulsa «Compartir», elige Gmail y escribe tu dirección @kindle.com.</p>':'';
+  const tip=(!kUrl()&&b.formats.some(f=>f.fmt==='EPUB'||f.fmt==='PDF'))?'<p class="facts">Para usar «Enviar al Kindle», configura el script en Ajustes.</p>':'';
   $('#detailBody').innerHTML=`<div class="detail">
     <div class="cover" id="dCover">${coverHtml(b)}</div>
     <div>
@@ -647,6 +662,7 @@ function openDetail(b,note){
     x.disabled=true;
     isDl(b,f.fmt)?removeOffline(b,f):saveOffline(b,f);
   });
+  dlg.querySelectorAll('[data-k]').forEach(x=>x.onclick=()=>sendToKindle(b,b.formats[x.dataset.k],x));
   dlg.querySelectorAll('[data-dl]').forEach(x=>x.onclick=()=>downloadFormat(b,b.formats[x.dataset.dl]));
   dlg.querySelectorAll('[data-sh]').forEach(x=>x.onclick=()=>shareFormat(b,b.formats[x.dataset.sh],x));
   if(!dlg.open)dlg.showModal();
@@ -656,6 +672,24 @@ function openDetail(b,note){
     const btn=dlg.querySelector(`[data-f="${ei}"]`);
     if(p&&btn&&p.pct>0.005)btn.textContent=`Continuar leyendo (${Math.round(p.pct*100)}%)`;
   });
+}
+async function sendToKindle(b,f,btn){
+  const msg=$('#dMsg');
+  if(!kUrl()||!kTok()){msg.textContent='Primero configura el envío al Kindle en Ajustes (URL del script y clave).';return;}
+  if(offlineMode){msg.textContent='Para enviar al Kindle hace falta conexión.';return;}
+  const name=f.name+'.'+f.fmt.toLowerCase();
+  btn.disabled=true;msg.textContent='Enviando al Kindle…';
+  try{
+    const it=await fileItem(b,f);
+    const u=kUrl()+'?'+new URLSearchParams({id:it.id,name,t:kTok()});
+    let j=null,leido=true;
+    try{const r=await fetch(u);j=await r.json();}catch{leido=false;}
+    if(!leido)msg.textContent='La solicitud salió, pero no pude leer la respuesta. Comprueba en unos minutos si «'+name+'» llega al Kindle.';
+    else if(j&&j.ok)msg.textContent='Enviado a tu Kindle: '+name+'. Llegará en unos minutos si el Kindle tiene conexión.';
+    else msg.textContent='No se pudo enviar: '+((j&&j.error)||'respuesta inesperada del script');
+  }catch(e){
+    msg.textContent='No se pudo enviar: '+(e instanceof TypeError?'sin conexión':e.message);
+  }finally{btn.disabled=false;}
 }
 const CAN_SHARE=typeof navigator.share==='function';
 const prepared={key:'',blob:null};
@@ -935,6 +969,8 @@ $('#change').onclick=()=>showSetup();
     const k=h.get('k'),f=parseFolder(h.get('f')||'');
     if(k&&/^AIza[0-9A-Za-z_-]{20,}$/.test(k))ls.setItem('cv_key',k);
     if(f)ls.setItem('cv_root',f);
+    const ku=h.get('ku'),kt=h.get('kt');
+    if(ku&&kt&&KURL_RE.test(ku)){ls.setItem('cv_kurl',ku);ls.setItem('cv_ktok',kt);}
     history.replaceState(null,'',location.pathname+location.search);
   }
   const root=rootId();
