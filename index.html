@@ -686,8 +686,8 @@ async function downloadFormat(b,f){
 async function shareFormat(b,f,btn){
   const msg=$('#dMsg');
   const key=fileKey(b,f.fmt),name=f.name+'.'+f.fmt.toLowerCase();
+  let blob=null;
   try{
-    let blob;
     if(prepared.key===key&&prepared.blob)blob=prepared.blob;   // ya preparado: se comparte en el mismo toque
     else{
       btn.disabled=true;
@@ -698,20 +698,26 @@ async function shareFormat(b,f,btn){
     const file=new File([blob],name,{type:MIME[f.fmt]||'application/octet-stream'});
     if(!(navigator.canShare&&navigator.canShare({files:[file]}))){
       saveBlobAs(blob,name);
-      msg.textContent='Este navegador no permite compartir este formato directamente. Se ha guardado en Descargas: adjúntalo desde Gmail ('+name+').';
+      msg.textContent='Este navegador no permite compartir este formato directamente. Se ha guardado en Descargas: adjúntalo en Gmail con el clip ('+name+').';
       return;
     }
     try{
       await navigator.share({files:[file],title:b.title});
+      delete btn.dataset.retry;
       msg.textContent='';
     }catch(e){
       if(e.name==='AbortError'){msg.textContent='';return;}
-      if(e.name==='NotAllowedError'){
+      // Primer intento: el navegador suele rechazarlo si ha pasado demasiado tiempo desde el toque. Se pide un segundo toque.
+      if(e.name==='NotAllowedError'&&!btn.dataset.retry){
+        btn.dataset.retry='1';
         btn.textContent='Compartir (listo)';
         msg.textContent='El archivo está preparado. Pulsa de nuevo «Compartir (listo)».';
         return;
       }
-      throw e;
+      // Segundo fallo u otro error: se guarda el archivo para adjuntarlo a mano y se muestra el motivo real.
+      delete btn.dataset.retry;
+      saveBlobAs(blob,name);
+      msg.textContent='El sistema no permite compartir este archivo directamente ('+e.name+(e.message?': '+e.message:'')+'). Se ha guardado en Descargas: adjúntalo en Gmail con el clip ('+name+').';
     }
   }catch(e){
     btn.disabled=false;
