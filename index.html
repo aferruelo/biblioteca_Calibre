@@ -344,7 +344,13 @@ const dirCache=new Map();
 function children(id){
   if(!dirCache.has(id)){
     const p=dlist(id,'id,name,mimeType,size,modifiedTime,thumbnailLink').then(arr=>{
-      const m=new Map();for(const f of arr)m.set(nfc(f.name),f);return m;});
+      const m=new Map();m._n=new Map();m._id=new Map();
+      for(const f of arr){
+        m.set(nfc(f.name),f);
+        m._n.set(norm(f.name),f);                                   // sin mayúsculas ni acentos
+        const k=String(f.name).match(/\((\d+)\)\s*$/);if(k)m._id.set(k[1],f); // número de id de Calibre al final del nombre
+      }
+      return m;});
     p.catch(()=>dirCache.delete(id));
     dirCache.set(id,p);
   }
@@ -354,7 +360,8 @@ async function folderOf(path){
   let id=rootId();
   for(const seg of path.split('/').filter(Boolean)){
     const m=await children(id);
-    const it=m.get(nfc(seg));
+    const k=seg.match(/\((\d+)\)\s*$/);
+    const it=m.get(nfc(seg))||m._n.get(norm(seg))||(k&&m._id.get(k[1]));
     if(!it)throw new Error('No encuentro «'+seg+'» en Google Drive.');
     id=it.id;
   }
@@ -366,7 +373,8 @@ function bookFiles(b){
 }
 async function fileItem(b,f){
   const m=await bookFiles(b);
-  let it=m.get(nfc(f.name+'.'+f.fmt.toLowerCase()));
+  const want=f.name+'.'+f.fmt.toLowerCase();
+  let it=m.get(nfc(want))||(m._n&&m._n.get(norm(want)));
   if(!it){
     const ext='.'+f.fmt.toLowerCase();
     const c=[...m.values()].filter(x=>x.name.toLowerCase().endsWith(ext));
