@@ -190,6 +190,7 @@ dialog::backdrop{background:rgba(10,14,20,.55)}
       <option value="pub">Fecha de publicación</option>
       <option value="rating">Valoración</option>
     </select>
+    <button class="btn ghost small" id="dirBtn" title="Invertir el orden"></button>
     <button class="btn ghost small" id="dlBtn">Descargas</button>
     <button class="btn ghost small" id="viewBtn">Ver como lista</button>
     <button class="btn ghost small" id="filtersBtn">Filtros</button>
@@ -423,6 +424,7 @@ function mapBook(r){
     path:r.path,hasCover:!!r.has_cover,coverUrl:null,_el:null,_files:null};
   b.hay=norm([b.title,authors.join(' '),b.series,b.tags.join(' '),b.publisher].join(' '));
   b.titleN=norm(b.title);
+  b.pubTs=b.year!==null?Date.parse(r.pubdate):null;
   b.letter=letterOf(b.sort,b.title);
   const ay=b.added?new Date(b.added).getFullYear():0;
   b.addedYear=ay>=1990?ay:0;   // Calibre guarda el año 101 cuando no hay fecha de añadido
@@ -556,7 +558,7 @@ const coverObserver=new IntersectionObserver(entries=>{
 },{rootMargin:'300px'});
 
 /* ================= Interfaz de biblioteca ================= */
-const state={q:'',tag:'',fmt:'',lang:'',author:'',series:'',dl:false,sort:'title',list:false,
+const state={q:'',tag:'',fmt:'',lang:'',author:'',series:'',dl:false,sort:'title',list:false,rev:false,
   yearFrom:0,yearTo:0,noYear:false,addedDays:0,addedYear:0,letter:'',titleQ:''};
 const ADDED=[[7,'Última semana'],[30,'Último mes'],[90,'Últimos 3 meses'],[365,'Último año']];
 function passes(b,st,terms,now){
@@ -586,23 +588,39 @@ function decadeBuckets(list){
 function hueOf(s){let h=0;for(const c of s)h=(h*31+c.charCodeAt(0))%360;return h;}
 function coverHtml(b){return `<div class="ph" style="background:hsl(${hueOf(b.title)},28%,32%)">${esc(b.title)}</div><img alt="">`;}
 
+const SORT_KEYS={added:b=>b.addedYear?b.added:null,pub:b=>b.pubTs,rating:b=>b.rating||null};
+function makeCmp(field,rev){
+  const text=(a,b)=>a.sort.localeCompare(b.sort,'es');
+  const sign=rev?-1:1;
+  if(field==='title')return (a,b)=>sign*text(a,b);
+  if(field==='author')return (a,b)=>sign*a.authorSort.localeCompare(b.authorSort,'es')||text(a,b);
+  const key=SORT_KEYS[field];   // fechas y valoración: por defecto de mayor a menor; los libros sin dato van siempre al final
+  return (a,b)=>{
+    const x=key(a),y=key(b);
+    if(x===null&&y===null)return text(a,b);
+    if(x===null)return 1;
+    if(y===null)return -1;
+    return sign*(y-x)||text(a,b);
+  };
+}
+function dirLabel(){
+  const f=state.sort,r=state.rev;
+  if(f==='added'||f==='pub')return r?'↑ Más antiguos primero':'↓ Más recientes primero';
+  if(f==='rating')return r?'↑ Menor valoración primero':'↓ Mayor valoración primero';
+  return r?'↑ Z → A':'↓ A → Z';
+}
 function apply(){
   const terms=norm(state.q).split(/\s+/).filter(Boolean),now=Date.now();
   filtered=books.filter(b=>passes(b,state,terms,now));
-  const cmp={
-    title:(a,b)=>a.sort.localeCompare(b.sort,'es'),
-    author:(a,b)=>a.authorSort.localeCompare(b.authorSort,'es')||a.sort.localeCompare(b.sort,'es'),
-    added:(a,b)=>b.added-a.added,
-    pub:(a,b)=>(b.year||0)-(a.year||0),
-    rating:(a,b)=>b.rating-a.rating||a.sort.localeCompare(b.sort,'es')
-  }[state.sort];
-  filtered.sort(cmp);
+  filtered.sort(makeCmp(state.sort,state.rev));
+  try{ls.setItem('cv_sort',JSON.stringify({sort:state.sort,rev:state.rev}));}catch{}
   renderAll();
 }
 function renderAll(){
   const g=$('#grid');g.innerHTML='';shown=0;
   g.classList.toggle('list',state.list);
   $('#viewBtn').textContent=state.list?'Ver como cuadrícula':'Ver como lista';
+  $('#dirBtn').textContent=dirLabel();
   $('#banner').hidden=!offlineMode;
   $('#summary').textContent=filtered.length===books.length
     ?`${books.length.toLocaleString('es')} libros`
@@ -1070,7 +1088,8 @@ async function start(p){
 }
 
 $('#q').addEventListener('input',e=>{state.q=e.target.value;apply();});
-$('#sort').addEventListener('change',e=>{state.sort=e.target.value;apply();});
+$('#sort').addEventListener('change',e=>{state.sort=e.target.value;state.rev=false;apply();});
+$('#dirBtn').onclick=()=>{state.rev=!state.rev;apply();};
 $('#viewBtn').onclick=()=>{state.list=!state.list;renderAll();};
 function openFilters(){
   $('#facets').classList.add('open');document.body.style.overflow='hidden';
@@ -1099,6 +1118,10 @@ $('#change').onclick=()=>showSetup();
     if(ku&&kt&&KURL_RE.test(ku)){ls.setItem('cv_kurl',ku);ls.setItem('cv_ktok',kt);}
     history.replaceState(null,'',location.pathname+location.search);
   }
+  try{
+    const sv=JSON.parse(ls.getItem('cv_sort')||'null');
+    if(sv&&['title','author','added','pub','rating'].includes(sv.sort)){state.sort=sv.sort;state.rev=!!sv.rev;$('#sort').value=sv.sort;}
+  }catch{}
   const root=rootId();
   if(root&&!navigator.onLine&&await kvGet('db:'+root))return start(root);
   if(!apiKey()||!root){showSetup();return;}
