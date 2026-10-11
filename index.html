@@ -87,6 +87,7 @@ main{padding:16px 16px 60px;min-width:0}
 .meta h3{font-family:var(--serif);font-weight:600;font-size:.92rem;line-height:1.25;margin:8px 0 2px;
          display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .meta p{margin:0;color:var(--muted);font-size:.83rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.meta p.ser{color:var(--accent);font-weight:600;font-size:.75rem;margin-bottom:2px}
 #grid.list{grid-template-columns:1fr;gap:10px}
 #grid.list .card{display:grid;grid-template-columns:56px 1fr;gap:14px;align-items:center;padding:6px;border-radius:8px}
 #grid.list .card:hover{background:var(--surface)}
@@ -605,6 +606,10 @@ function makeCmp(field,rev){
   if(field==='author')return (a,b)=>sign*a.authorSort.localeCompare(b.authorSort,'es')||text(a,b);
   if(field==='serie'){
     return (a,b)=>{
+      // Los libros sin serie van siempre al final, con independencia de la dirección
+      if(!a.series&&!b.series)return text(a,b);
+      if(!a.series)return 1;
+      if(!b.series)return -1;
       const seriesCmp=sign*(a.series.localeCompare(b.series,'es'));
       if(seriesCmp!==0)return seriesCmp;
       // Dentro de la misma serie, ordenar por número de serie
@@ -656,7 +661,8 @@ function renderMore(){
   for(let i=shown;i<end;i++){
     const b=filtered[i],el=document.createElement('article');
     el.className='card';el.tabIndex=0;
-    el.innerHTML=`<div class="cover${anyDl(b)?' dl':''}">${coverHtml(b)}</div><div class="meta"><h3>${esc(b.title)}</h3><p>${esc(b.authors.join(', '))}</p></div>`;
+    const serLine=state.sort==='serie'&&b.series?`<p class="ser">${esc(b.series)} #${esc(String(+b.seriesIndex))}</p>`:'';
+    el.innerHTML=`<div class="cover${anyDl(b)?' dl':''}">${coverHtml(b)}</div><div class="meta">${serLine}<h3>${esc(b.title)}</h3><p>${esc(b.authors.join(', '))}</p></div>`;
     const cv=el.querySelector('.cover');cv._book=b;coverObserver.observe(cv);b._el=el;
     el.addEventListener('click',()=>openDetail(b));
     el.addEventListener('keydown',e=>{if(e.key==='Enter')openDetail(b);});
