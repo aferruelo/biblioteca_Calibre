@@ -189,6 +189,7 @@ dialog::backdrop{background:rgba(10,14,20,.55)}
       <option value="added">Añadidos recientemente</option>
       <option value="pub">Fecha de publicación</option>
       <option value="rating">Valoración</option>
+      <option value="serie">Serie</option>
     </select>
     <button class="btn ghost small" id="dirBtn" title="Invertir el orden"></button>
     <button class="btn ghost small" id="dlBtn">Descargas</button>
@@ -602,6 +603,19 @@ function makeCmp(field,rev){
   const sign=rev?-1:1;
   if(field==='title')return (a,b)=>sign*text(a,b);
   if(field==='author')return (a,b)=>sign*a.authorSort.localeCompare(b.authorSort,'es')||text(a,b);
+  if(field==='serie'){
+    return (a,b)=>{
+      const seriesCmp=sign*(a.series.localeCompare(b.series,'es'));
+      if(seriesCmp!==0)return seriesCmp;
+      // Dentro de la misma serie, ordenar por número de serie
+      const aIdx=a.seriesIndex!==null?a.seriesIndex:Infinity;
+      const bIdx=b.seriesIndex!==null?b.seriesIndex:Infinity;
+      if(aIdx===Infinity&&bIdx===Infinity)return text(a,b);
+      if(aIdx===Infinity)return 1;
+      if(bIdx===Infinity)return -1;
+      return sign*(aIdx-bIdx)||text(a,b);
+    };
+  }
   const key=SORT_KEYS[field];   // fechas y valoración: por defecto de mayor a menor; los libros sin dato van siempre al final
   return (a,b)=>{
     const x=key(a),y=key(b);
@@ -615,6 +629,7 @@ function dirLabel(){
   const f=state.sort,r=state.rev;
   if(f==='added'||f==='pub')return r?'↑ Más antiguos primero':'↓ Más recientes primero';
   if(f==='rating')return r?'↑ Menor valoración primero':'↓ Mayor valoración primero';
+  if(f==='serie')return r?'↑ Z → A':'↓ A → Z';
   return r?'↑ Z → A':'↓ A → Z';
 }
 function apply(){
