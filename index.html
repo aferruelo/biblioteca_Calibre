@@ -566,7 +566,7 @@ const coverObserver=new IntersectionObserver(entries=>{
 },{rootMargin:'300px'});
 
 /* ================= Interfaz de biblioteca ================= */
-const state={q:'',tag:'',fmt:'',lang:'',author:'',series:'',dl:false,sort:'title',list:false,rev:false,
+const state={q:'',calId:'',tag:'',fmt:'',lang:'',author:'',series:'',dl:false,sort:'title',list:false,rev:false,
   yearFrom:0,yearTo:0,noYear:false,addedDays:0,addedYear:0,letter:'',titleQ:''};
 const ADDED=[[7,'Última semana'],[30,'Último mes'],[90,'Últimos 3 meses'],[365,'Último año']];
 function passes(b,st,terms,now){
@@ -578,6 +578,7 @@ function passes(b,st,terms,now){
   if(st.series&&b.series!==st.series)return false;
   if(st.letter&&b.letter!==st.letter)return false;
   if(st.titleQ&&!b.titleN.includes(norm(st.titleQ)))return false;
+  if(st.calId&&String(b.id)!==String(st.calId))return false;
   if(st.noYear&&b.year!==null)return false;
   if(st.yearFrom&&(b.year===null||b.year<st.yearFrom))return false;
   if(st.yearTo&&(b.year===null||b.year>st.yearTo))return false;
@@ -585,8 +586,8 @@ function passes(b,st,terms,now){
   if(st.addedYear&&b.addedYear!==st.addedYear)return false;
   return terms.every(t=>b.hay.includes(t));
 }
-function anyFilter(){const s=state;return !!(s.dl||s.tag||s.fmt||s.lang||s.author||s.series||s.yearFrom||s.yearTo||s.noYear||s.addedDays||s.addedYear||s.letter||s.titleQ);}
-function clearFilters(){Object.assign(state,{tag:'',fmt:'',lang:'',author:'',series:'',dl:false,yearFrom:0,yearTo:0,noYear:false,addedDays:0,addedYear:0,letter:'',titleQ:''});apply();}
+function anyFilter(){const s=state;return !!(s.calId||s.dl||s.tag||s.fmt||s.lang||s.author||s.series||s.yearFrom||s.yearTo||s.noYear||s.addedDays||s.addedYear||s.letter||s.titleQ);}
+function clearFilters(){Object.assign(state,{calId:'',tag:'',fmt:'',lang:'',author:'',series:'',dl:false,yearFrom:0,yearTo:0,noYear:false,addedDays:0,addedYear:0,letter:'',titleQ:''});apply();}
 function decadeBuckets(list){
   const m=new Map();let none=0;
   for(const b of list){if(b.year===null){none++;continue;}const d=b.year<1900?0:Math.floor(b.year/10)*10;m.set(d,(m.get(d)||0)+1);}
@@ -675,6 +676,7 @@ function renderActive(){
   const box=$('#active');box.innerHTML='';
   const add=(text,fn)=>{const x=document.createElement('button');x.className='chip';x.textContent=text+'  ×';x.onclick=fn;box.appendChild(x);};
   if(state.dl)add('Descargados',()=>{state.dl=false;apply();});
+  if(state.calId)add('ID de Calibre: '+state.calId,()=>{state.calId='';apply();});
   if(state.titleQ)add('Título contiene: '+state.titleQ,()=>{state.titleQ='';apply();});
   if(state.letter)add('Inicial: '+state.letter,()=>{state.letter='';apply();});
   if(state.noYear)add('Sin año de publicación',()=>{state.noYear=false;apply();});
@@ -688,7 +690,7 @@ function renderActive(){
 }
 function count(list){const m=new Map();for(const v of list)m.set(v,(m.get(v)||0)+1);return [...m].sort((a,b)=>b[1]-a[1]||String(a[0]).localeCompare(String(b[0]),'es'));}
 
-const facetOpen=new Set(['Disponibilidad','Formato','Idioma']);
+const facetOpen=new Set(['ID de Calibre','Disponibilidad','Formato','Idioma']);
 const facetQ={};
 function section(parent,title,build){
   const d=document.createElement('details');
@@ -735,6 +737,14 @@ function renderFacets(){
     const c=document.createElement('button');c.className='linkish';c.style.margin='8px 0 4px';
     c.textContent='Quitar todos los filtros';c.onclick=clearFilters;a.appendChild(c);
   }
+
+  section(a,'ID de Calibre',box=>{
+    const inp=document.createElement('input');inp.type='number';inp.min='1';inp.className='fsearch';
+    inp.placeholder='Número de ID, p. ej. 1234';inp.value=state.calId;
+    inp.addEventListener('change',()=>{state.calId=inp.value.trim();apply();});
+    inp.addEventListener('keydown',e=>{if(e.key==='Enter'){state.calId=inp.value.trim();apply();}});
+    box.appendChild(inp);
+  });
 
   section(a,'Disponibilidad',box=>{
     facetBtn(box,'Descargados',books.filter(anyDl).length,state.dl,()=>{state.dl=!state.dl;apply();});
