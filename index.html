@@ -189,6 +189,7 @@ dialog::backdrop{background:rgba(10,14,20,.55)}
       <option value="pub">Fecha de publicación</option>
       <option value="rating">Valoración</option>
       <option value="serie">Serie</option>
+      <option value="id">ID de Calibre</option>
     </select>
     <button class="btn ghost small" id="dirBtn" title="Invertir el orden"></button>
     <button class="btn ghost small" id="dlBtn">Descargas</button>
@@ -603,6 +604,7 @@ function makeCmp(field,rev){
   const sign=rev?-1:1;
   if(field==='title')return (a,b)=>sign*text(a,b);
   if(field==='author')return (a,b)=>sign*a.authorSort.localeCompare(b.authorSort,'es')||text(a,b);
+  if(field==='id')return (a,b)=>sign*(a.id-b.id)||text(a,b);   // por defecto de menor a mayor
   if(field==='serie'){
     return (a,b)=>{
       // Los libros sin serie van siempre al final, con independencia de la dirección
@@ -634,6 +636,7 @@ function dirLabel(){
   if(f==='added'||f==='pub')return r?'↑ Más antiguos primero':'↓ Más recientes primero';
   if(f==='rating')return r?'↑ Menor valoración primero':'↓ Mayor valoración primero';
   if(f==='serie')return r?'↑ Z → A':'↓ A → Z';
+  if(f==='id')return r?'↑ Mayor ID primero':'↓ Menor ID primero';
   return r?'↑ Z → A':'↓ A → Z';
 }
 function apply(){
@@ -660,7 +663,7 @@ function renderMore(){
   for(let i=shown;i<end;i++){
     const b=filtered[i],el=document.createElement('article');
     el.className='card';el.tabIndex=0;
-    const num=state.sort==='serie'&&b.series?`#${+b.seriesIndex} `:'';
+    const num=state.sort==='serie'&&b.series?`#${+b.seriesIndex} `:state.sort==='id'?`ID ${b.id} · `:'';
     el.innerHTML=`<div class="cover${anyDl(b)?' dl':''}">${coverHtml(b)}</div><div class="meta"><h3>${esc(num)}${esc(b.title)}</h3><p>${esc(b.authors.join(', '))}</p></div>`;
     const cv=el.querySelector('.cover');cv._book=b;coverObserver.observe(cv);b._el=el;
     el.addEventListener('click',()=>openDetail(b));
