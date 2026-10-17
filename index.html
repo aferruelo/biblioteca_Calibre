@@ -181,7 +181,7 @@ dialog::backdrop{background:rgba(10,14,20,.55)}
 <div id="app" hidden>
   <header class="bar">
     <h1 id="libName">Mi biblioteca</h1>
-    <input type="search" id="q" placeholder="Buscar por título, autor, serie o etiqueta" aria-label="Buscar">
+    <input type="search" id="q" placeholder="Buscar por título, autor, serie, etiqueta o ID" aria-label="Buscar">
     <select id="sort" aria-label="Ordenar">
       <option value="title">Título</option>
       <option value="author">Autor</option>
@@ -584,7 +584,7 @@ function passes(b,st,terms,now){
   if(st.yearTo&&(b.year===null||b.year>st.yearTo))return false;
   if(st.addedDays&&b.added<now-st.addedDays*864e5)return false;
   if(st.addedYear&&b.addedYear!==st.addedYear)return false;
-  return terms.every(t=>b.hay.includes(t));
+  return terms.every(t=>b.hay.includes(t)||(/^\d+$/.test(t)&&String(b.id)===t));   // un número exacto también busca por ID de Calibre
 }
 function anyFilter(){const s=state;return !!(s.calId||s.dl||s.tag||s.fmt||s.lang||s.author||s.series||s.yearFrom||s.yearTo||s.noYear||s.addedDays||s.addedYear||s.letter||s.titleQ);}
 function clearFilters(){Object.assign(state,{calId:'',tag:'',fmt:'',lang:'',author:'',series:'',dl:false,yearFrom:0,yearTo:0,noYear:false,addedDays:0,addedYear:0,letter:'',titleQ:''});apply();}
