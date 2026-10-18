@@ -113,7 +113,8 @@ dialog::backdrop{background:rgba(10,14,20,.55)}
 #reader{position:fixed;inset:0;z-index:50;background:#fff;color:#1b1f24;--rb:rgba(255,255,255,.97);--rl:#d5dce3}
 #reader[data-theme=sepia]{background:#f4ecd8;color:#4b3b2a;--rb:rgba(244,236,216,.98);--rl:#dccfae}
 #reader[data-theme=dark]{background:#12161c;color:#d8dee6;--rb:rgba(24,32,42,.98);--rl:#2a3441}
-#viewerWrap{position:absolute;inset:0;padding:max(16px,env(safe-area-inset-top)) 14px max(16px,env(safe-area-inset-bottom))}
+#viewerWrap{position:absolute;inset:0;padding:max(16px,env(safe-area-inset-top)) 14px max(30px,calc(env(safe-area-inset-bottom) + 22px))}
+.rfoot{position:absolute;left:0;right:0;bottom:0;z-index:2;text-align:center;font-size:.78rem;opacity:.75;padding:0 12px max(6px,env(safe-area-inset-bottom));pointer-events:none;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #viewer{width:100%;height:100%}
 .rbar{position:absolute;left:0;right:0;z-index:3;display:flex;align-items:center;gap:8px;background:var(--rb);color:inherit;
   padding:8px 10px;transition:transform .2s}
@@ -229,6 +230,7 @@ dialog::backdrop{background:rgba(10,14,20,.55)}
     <input type="range" id="rSlider" min="0" max="1000" value="0" disabled aria-label="Posición en el libro">
     <span id="rPct">0%</span>
   </div>
+  <div class="rfoot" id="rFoot" aria-live="off"></div>
   <div class="rpanel" id="rPanelToc" hidden></div>
   <div class="rpanel" id="rPanelSet" hidden>
     <div class="opt"><span>Tamaño</span><div class="seg"><button id="fMinus" aria-label="Reducir">A−</button><button id="fPlus" aria-label="Aumentar">A+</button></div></div>
@@ -988,6 +990,25 @@ function updateProgress(p){
   $('#rSlider').value=Math.round(p*1000);
   $('#rPct').textContent=Math.round(p*100)+'%';
 }
+function updateFoot(cfi){
+  const el=$('#rFoot');
+  if(!rb||!cfi){el.textContent='';return;}
+  const parts=[];
+  try{
+    const pl=rb.pageList;
+    if(pl&&typeof pl.pageFromCfi==='function'){
+      const pg=pl.pageFromCfi(cfi),tot=pl.total||(pl.pages&&pl.pages.length);
+      if(pg&&tot)parts.push(`Página ${pg} de ${tot}`);
+    }
+  }catch{}
+  try{
+    if(rb.locations&&rb.locations.length()){
+      if(!parts.length)parts.push(`Ubicación ${rb.locations.locationFromCfi(cfi)+1} de ${rb.locations.length()}`);
+      parts.push(Math.round(rb.locations.percentageFromCfi(cfi)*100)+'%');
+    }
+  }catch{}
+  el.textContent=parts.join(' · ');
+}
 function renderToc(nav){
   const box=$('#rPanelToc');box.innerHTML='<h3>Índice</h3>';
   const walk=(items,d)=>items.forEach(it=>{
@@ -1005,7 +1026,7 @@ async function openReader(b,f){
   const load=$('#rLoad');
   $('#reader').hidden=false;load.hidden=false;load.textContent='Preparando el libro…';
   $('#rTitle').textContent=b.title;
-  $('#rSlider').disabled=true;updateProgress(0);setBars(false);
+  $('#rSlider').disabled=true;updateProgress(0);$('#rFoot').textContent='';setBars(false);
   document.body.style.overflow='hidden';
   history.pushState({reader:1},'');
   applyReaderPrefs();
@@ -1032,7 +1053,7 @@ async function openReader(b,f){
       const cfi=loc.start.cfi;
       let pct=loc.start.percentage||0;
       try{if(myBook.locations&&myBook.locations.length())pct=myBook.locations.percentageFromCfi(cfi);}catch{}
-      updateProgress(pct);
+      updateProgress(pct);updateFoot(cfi);
       kvSetQuiet('pos:'+libPath+'|'+b.id,{cfi,pct,ts:Date.now()});
     });
     let tx=0,ty=0;
@@ -1066,7 +1087,7 @@ async function openReader(b,f){
         if(rb!==myBook)return;
         $('#rSlider').disabled=false;
         const cur=rr.currentLocation&&rr.currentLocation();
-        if(cur&&cur.start)updateProgress(myBook.locations.percentageFromCfi(cur.start.cfi));
+        if(cur&&cur.start){updateProgress(myBook.locations.percentageFromCfi(cur.start.cfi));updateFoot(cur.start.cfi);}
       }catch{}
     })();
   }catch(e){
